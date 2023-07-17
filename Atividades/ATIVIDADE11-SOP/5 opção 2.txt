@@ -1,0 +1,155 @@
+#include<semaphore.h>
+
+#include<pthread.h>
+
+#include<stdio.h>
+
+
+int rc=0,wc=0,val; //inteiros globais
+
+pthread_mutex_t mutex1,mwrite,mread,rallow; //mutexes para acesso ao buffer
+
+pthread_t tr1,tr2,tw1,tw2; //threads para leitores 1 e 2,escritores 1 e 2.
+ 
+pthread_attr_t tr1attr,tr2attr,tw1attr,tw2attr; //threads para leitores 1 e 2,escritores 1 e 2.
+
+
+
+void *writer();
+
+void *reader();
+
+
+int main()
+
+{
+ //inicializa mutexes
+ pthread_mutex_init(&mwrite,NULL);
+
+ pthread_mutex_init(&mread,NULL);
+
+ pthread_mutex_init(&rallow,NULL);
+
+ pthread_mutex_init(&mutex1,NULL);
+
+ //inicializa threads;
+ pthread_attr_init(&tw1attr);
+
+ pthread_attr_init(&tr1attr);
+
+ pthread_attr_init(&tr2attr);
+
+ pthread_attr_init(&tw2attr);
+
+ //Escritor foi criado
+ printf("\n Writer 1 created");
+
+ pthread_create(&tw1,&tw1attr,writer,NULL);
+ //Leitor foi criado 
+ printf("\n Reader 1 created");
+
+ pthread_create(&tr1,&tr1attr,reader,NULL);
+ 
+ //Leitor foi criado
+ printf("\n Reader 2 created");
+
+ pthread_create(&tr2,&tr2attr,reader,NULL);
+ 
+ //Escritor foi criado
+ printf("\n WRITER 2 created");
+
+ pthread_create(&tw2,&tw2attr,writer,NULL);
+
+ 
+ pthread_join(tw1,NULL); //retornada valor da thread tw1, escritor 1
+
+ pthread_join(tr1,NULL); //retornada valor da thread tr1 , leitor 1
+
+ pthread_join(tr2,NULL); //retornada valor da thread tr2 , leitor 2
+
+ pthread_join(tw2,NULL); //retornada valor da thread tw2 , escritor 1
+
+
+ return 0;
+
+}
+
+//Corpo do escritor
+void *writer()
+
+{
+
+ pthread_mutex_lock(&mwrite);
+
+ wc++; 
+ 
+ if(wc==1)
+
+  pthread_mutex_lock(&rallow); //requisita acesso exclusivo ao buffer
+
+ pthread_mutex_unlock(&mwrite);  //libera o buffer
+
+
+ pthread_mutex_lock(&mutex1);  //requisita acesso exclusvi ao buffer
+
+ printf("\n Enter data in writer %d",wc); //digita o dado do escritor
+
+ scanf("%d",&val); //recebendo do teclado o dado
+ 
+ pthread_mutex_unlock(&mutex1); //libera buffer
+
+
+ pthread_mutex_lock(&mwrite); //requisita acesso exlcusivo ao buffer
+
+ wc--;
+
+ if(wc==0) //
+
+  pthread_mutex_unlock(&rallow); //libera buffer
+
+ pthread_mutex_unlock(&mwrite); //libera buffer
+
+ pthread_exit(0);  //retorna valor da thread
+
+}
+
+
+void *reader()
+
+{
+
+ pthread_mutex_lock(&rallow); //requisita acesso exclusivo ao buffer
+
+ pthread_mutex_lock(&mread); //libera buffer
+
+
+ rc++;
+
+ if(rc==1)
+
+  pthread_mutex_lock(&mutex1); //requisita acesso exclusivo ao buffer
+
+ pthread_mutex_unlock(&mread); //libera buffer
+
+ pthread_mutex_unlock(&rallow); //libera buffer
+
+ printf("\n reader %d read data: %d",rc,val);
+
+
+ pthread_mutex_lock(&mread); //requisita acesso exclusivo ao buffer
+
+ rc--;
+
+ if(rc==0)
+
+  pthread_mutex_unlock(&mutex1); //libera buffer
+
+ pthread_mutex_unlock(&mread); //libera buffer
+
+ pthread_exit(0); //retorna valor da thread
+ 
+}
+
+
+
+//https://prac-code.blogspot.com/2014/04/cc-code-for-reader-writer-problem_29.html
